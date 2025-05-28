@@ -68,26 +68,40 @@ def macro_analysis():
         'Market Status': market_status
     }
 
-# 2. 산업분석 단계
+# 2. 산업분석 단계 (실제 데이터 기반)
+def industry_analysis(top_n=3):
+    """
+    네이버 금융 업종별 시세에서 당일 등락률(전일대비)이 높은 상위 n개 산업군 추천
+    """
+    url = 'https://finance.naver.com/sise/sise_group.naver?type=upjong'
+    res = requests.get(url)
+    df = pd.read_html(res.text, header=0)[0]  # 첫 번째 테이블이 업종별 시세
+    df = df.dropna(subset=['전일대비'])
+    # '전일대비' 컬럼에서 %와 +, -, , 제거 후 float 변환
+    df['전일대비(수치)'] = df['전일대비'].astype(str).str.replace('%','').str.replace('+','').str.replace(',','')
+    df['전일대비(수치)'] = pd.to_numeric(df['전일대비(수치)'], errors='coerce')
+    df = df.dropna(subset=['전일대비(수치)'])
+    # 상위 n개 산업군 추출
+    top_industries = df.sort_values('전일대비(수치)', ascending=False).head(top_n)
+    result = top_industries[['업종명', '전일대비']].reset_index(drop=True)
+    return result
+
+# 3. 종목분석 단계 (머신러닝 등)
 INDUSTRY_GROUPS = {
     '전통': ['철강', '석유화학', '은행'],
     '성장': ['2차전지', 'AI 반도체', '바이오'],
     '방어': ['통신', '필수소비재']
 }
 
-def industry_analysis():
-    # TODO: 각 산업군별 성장성, 저평가 여부 분석 (구조만 설계)
-    # 예시: 성장 산업군에 더 높은 점수 부여
-    industry_scores = {k: (2 if k == '성장' else 1) for k in INDUSTRY_GROUPS.keys()}
-    return industry_scores
-
-# 3. 종목분석 단계 (머신러닝 등)
 def stock_analysis(selected_industries):
     # TODO: 산업군 내 종목별 투자매력 평가 (머신러닝 등)
     # 예시: 임의의 종목 추천
     recommendations = {}
     for group in selected_industries:
-        recommendations[group] = INDUSTRY_GROUPS[group][:2]  # 각 산업군 상위 2개 종목 추천
+        if group in INDUSTRY_GROUPS:
+            recommendations[group] = INDUSTRY_GROUPS[group][:2]  # 각 산업군 상위 2개 종목 추천
+        else:
+            recommendations[group] = ['(실제 종목 추천 필요)']
     return recommendations
 
 # 전체 파이프라인 실행
@@ -100,11 +114,10 @@ def run_pipeline():
     else:
         print('시장 호황: 적극적으로 종목 추천을 진행합니다.')
 
-    print('\n[2] 산업분석')
-    industry_scores = industry_analysis()
-    print(industry_scores)
-    # 성장 산업군만 선택 예시
-    selected = [k for k, v in industry_scores.items() if v == max(industry_scores.values())]
+    print('\n[2] 산업분석 (실제 데이터 기반)')
+    industry_df = industry_analysis(top_n=3)
+    print(industry_df)
+    selected = industry_df['업종명'].tolist()
     print(f'추천 산업군: {selected}')
 
     print('\n[3] 종목분석')
