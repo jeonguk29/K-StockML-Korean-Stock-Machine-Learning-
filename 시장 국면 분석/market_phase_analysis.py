@@ -1,8 +1,6 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import requests
-from bs4 import BeautifulSoup
 
 # 1. KOSPI 과거 데이터 다운로드 (2년치)
 kospi = yf.download("^KS11", period="2y")
@@ -20,18 +18,8 @@ latest_ma200 = float(kospi["MA200"].iloc[-1])
 market_position = "고점" if latest_close > latest_ma200 else "저점"
 trend = "약세장 (데드크로스)" if latest_ma50 < latest_ma200 else "강세장 (골든크로스)"
 
-# 5. VKOSPI는 네이버 크롤링(실시간만 가능)
-def get_vkospi():
-    url = "https://finance.naver.com/sise/sise_index.naver?code=VKS"
-    r = requests.get(url)
-    soup = BeautifulSoup(r.text, "html.parser")
-    try:
-        idx = soup.select_one("span#now_value").text.replace(',', '')
-        return float(idx)
-    except:
-        return np.nan
-
-latest_vkospi = get_vkospi()
+# 5. VKOSPI는 수동 입력
+latest_vkospi = 22.71  # 2024-06-03 기준 Investing.com 값
 
 # 6. 결과 출력
 print(f"[KOSPI 지수] 현재 종가: {latest_close:.2f}")
